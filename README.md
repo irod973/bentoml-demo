@@ -8,7 +8,7 @@
 
 # Description	
 
-Exploring BentoML for model serving and inference. Adapted from https://github.com/musikalkemist/mldeployment/tree/main
+Exploring BentoML for model serving and inference. Adapted from https://github.com/musikalkemist/mldeployment/tree/main. Note that the example originally used the v1.0.0 library and there were various deprecation warnings
 
 # Installation
 
@@ -19,32 +19,86 @@ uv run just install
 ```
 # Usage
 
-Test the example package
+## Train model and save to BentoML model store
+
+This includes a script to train a CNN digit classifier using the MNIST dataset
 ```bash
-uv run bentoml-demo
+cd src/
+uv run python bentoml_demo/training.py 
+uv run python bentoml_demo/savemodeltobento.py
 ```
 
-Test the example API with Docker:
-```bash	
-uv add fastapi uvicorn	
-uv run just package	
+#### Deprecation warning
 
-# Invoke docker compose	
-uv run just docker-compose
-
-# Or run with docker compose	
-docker compose up --build	
-
-# Or run with docker	
-# Note: specify platform if running on Apple M chip 	
-docker build --platform linux/amd64 -t bentoml-demo-image -f Dockerfile .	
-docker run -it --platform linux/amd64 --name bentoml-demo-ctr -p 8000:8000 bentoml-demo-image	
+```
+(bentoml-demo) ➜  bentoml_demo git:(main) ✗ uv run python savemodeltobento.py
+/Users/irvingrodriguez/Documents/workspace/bentoml-demo/src/bentoml_demo/savemodeltobento.py:13: BentoMLDeprecationWarning: `bentoml.keras` is deprecated since v1.4 and will be removed in a future version.
 ```
 
-Test the API using the local environment:
+## Build the model + service into a bento
+
+This is defined in `bentoml_demo/service/bentofile.yaml`.
+
+This will output a tag that can be used  e.g. `Bento(tag="mnist_classifier:q333ynrengyagmpy").`
 ```bash
-cd src	
-uv run uvicorn example_app.main:app --reload
+cd src/bentoml_demo/service
+bentoml build
+```
+
+## Serve model through a bento
+
+```
+bentoml serve mnist_classifier:latest --production
+```
+
+#### Deprecation warning
+
+```
+DeprecationWarning: The parameter '--production' is 
+deprecated and will be removed in the future. 
+(Current behaviour: This is enabled by default. To 
+run in development mode, use '--development'.)
+```
+
+## Containerize a bento
+
+This allows you to port your app to other environments e.g. k8s
+```
+bentoml containerize mnist_classifier:latest
+```
+
+You can then try running a container (todo: add the `bentoml containerize` to the `containers` task)
+
+## Deployment options
+
+Kubernetes via (Yatai)[https://github.com/bentoml/Yatai]
+
+## Create a stand-alone BentoML service
+
+This utilizes (BentoML runners)[https://docs.bentoml.com/en/1.1/concepts/runner.html]. This is very similar to a FastAPI endpoint but includes some optimizations like adaptive batching.
+```bash
+cd src/bentoml_demo
+bentoml serve service.service:mnist_service --reload
+```
+
+#### Deprecation warning
+
+```
+/Users/irvingrodriguez/Documents/workspace/bentoml-demo/.venv/lib/python3.12/site-packages/bentoml/_internal/models/model.py:354: BentoMLDeprecationWarning: `Runner` is deprecated since BentoML v1.4 and will be removed in a future version. Please upgrade to new style services.
+  return Runner(
+/Users/irvingrodriguez/Documents/workspace/bentoml-demo/src/bentoml_demo/service/service.py:14: BentoMLDeprecationWarning: `bentoml.Service` is deprecated since BentoML v1.4 and will be removed in a future version. Please upgrade to @bentoml.service().
+  mnist_service = bentoml.Service("mnist_classifier", runners=[classifier_runner])
+```
+
+## bentoml cli
+
+Some useful cli commands. General info:
+```bash
+bentoml -h
+```
+
+```bash
+bentoml models {list, get, delete, push, pull}
 ```
 
 ## Development Features
